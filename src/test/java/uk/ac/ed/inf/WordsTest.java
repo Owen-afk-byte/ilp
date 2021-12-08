@@ -14,9 +14,9 @@ public class WordsTest {
         // The webserver must be running on port 9898 to run this test.
         Words words = new Words("localhost", "9898");
         LongLat coordinates = words.getInfo(
-                "less.change.atomic");
+                "linked.pads.cigar");
         // Don't forget the standard delivery charge of 50p
-        assertEquals("dfbnodn", coordinates);
+        assertEquals("dfbnodn", coordinates.longitude + " " + coordinates.latitude);
     }
 
 }

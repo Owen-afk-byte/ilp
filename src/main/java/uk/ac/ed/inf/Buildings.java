@@ -82,11 +82,11 @@ public class Buildings {
         return buildingsArray;
     }
 
-    public static ArrayList<ArrayList<LongLat>> getLandmarks(String name, String port) {
+    public static ArrayList<LongLat> getLandmarks(String name, String port) {
 
-        ArrayList<ArrayList<LongLat>> landmarksArray = new ArrayList<>();
+        ArrayList<LongLat> landmarksArray = new ArrayList<>();
 
-        String urlString = "http://" + name + ":" + port + "/buildings/no-fly-zones.geojson";
+        String urlString = "http://" + name + ":" + port + "/buildings/landmarks.geojson";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();
@@ -95,31 +95,23 @@ public class Buildings {
 
             String responseBody = response.body();
 
-            Type listType = new TypeToken<Coordinates>() {}.getType();
+            Type listType = new TypeToken<Landmarks>() {}.getType();
             // Use the ”fromJson(String, Type)” method
             System.out.println(responseBody);
-            Coordinates responseList = new Gson().fromJson(responseBody, listType);
+            Landmarks responseList = new Gson().fromJson(responseBody, listType);
             System.out.println(responseList);
-            Coordinates allLandmarks = responseList;
+            Landmarks allLandmarks = responseList;
 
             // Stores all of the buildings coordinates in an array
             // Loops through all of the features on the input list
             for (int i = 0; i < allLandmarks.features.size(); i++) {
-                Coordinates.Features features = allLandmarks.features.get(i);
+                Landmarks.Features features = allLandmarks.features.get(i);
                 //gets geometry
-                Coordinates.Features.Geometry geometry = features.geometry;
-                ArrayList<LongLat> innerBuildingsArray = new ArrayList<>();
-                // Loops through first level of coordinates
-                for (int j = 0; j < geometry.coordinates.size(); j++) {
-                    ArrayList<ArrayList<Float>> firstArray = geometry.coordinates.get(j);
-                    // Loops through second level of coordinates
-                    for (int k = 0; k < firstArray.size(); k++) {
-                        ArrayList<Float> secondArray = firstArray.get(k);
-                        LongLat longLat = new LongLat(secondArray.get(0), secondArray.get(1));
-                        innerBuildingsArray.add(longLat);
-                    }
-                }
-                landmarksArray.add(innerBuildingsArray);
+                Landmarks.Features.Geometry geometry = features.geometry;
+                double longitude = geometry.coordinates.get(0);
+                double latitude = geometry.coordinates.get(1);
+                LongLat longLat = new LongLat(longitude, latitude);
+                landmarksArray.add(longLat);
             }
         } catch (ConnectException e) {
             System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
