@@ -78,6 +78,9 @@ public class Buildings {
             System.exit(1); // Exit the application
         }
 
+        for (int a = 0; a < buildingsArray.size(); a++) {
+            System.out.println(buildingsArray.get(a).size());
+        }
 
         return buildingsArray;
     }

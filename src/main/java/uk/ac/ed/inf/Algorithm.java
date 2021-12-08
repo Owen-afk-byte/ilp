@@ -45,6 +45,8 @@ public class Algorithm {
         LongLat pickupTwo = null;
         LongLat landmark = null;
 
+        double landmarkDistance = 0;
+
         String pickupID = null;
         ArrayList<LongLat> deliveryLocations = new ArrayList<>();
 
@@ -258,16 +260,18 @@ public class Algorithm {
                         double checkMoveLat = checkMove.latitude;
                         if (dronePath.size()>3) {
                             if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
-                                pickingUp = false;
-                                pausedPickup = true;
-                                headingLandmark = true;
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
                                 numberOfMoves = numberOfMoves - 3;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
+                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmarkDistance = startLocation.distanceTo(landmark);
+                                pickingUp = false;
+                                pausedPickup = true;
+                                headingLandmark = true;
+
                             }
                         }
                         System.out.println("THE ANGLE " + finalMove);
@@ -326,16 +330,18 @@ public class Algorithm {
                         if (dronePath.size()>3) {
                             if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 System.out.println("hello there");
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
-                                currentlyDelivering = false;
-                                pausedDelivery = true;
-                                headingLandmark = true;
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
                                 numberOfMoves = numberOfMoves - 3;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
+                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmarkDistance = startLocation.distanceTo(landmark);
+                                currentlyDelivering = false;
+                                pausedDelivery = true;
+                                headingLandmark = true;
+
                             }
                         }
 
@@ -363,8 +369,8 @@ public class Algorithm {
                     }
                 }else if (currentlyDelivering == false && pickingUp == false && headingLandmark == true) {
 
-                    if (landmarkMoves < 10) {
-                        startLocation = nextMove;
+                    startLocation = nextMove;
+                    if (landmarkMoves < 15) {
 
                         moves = Moves(startLocation, landmark, buildingCoordinates);
                         double finalDistance = 999;
@@ -377,10 +383,39 @@ public class Algorithm {
                                 finalMove = angleMove;
                             }
                         }
+                        LongLat checkMove = startLocation.nextPosition(finalMove);
+                        double checkMoveLong = checkMove.longitude;
+                        double checkMoveLat = checkMove.latitude;
+                        if (dronePath.size()>3) {
+                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                                doNotEnter.add(dronePath.get(dronePath.size()-1));
+                                numberOfMoves = numberOfMoves - 3;
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                startLocation = (dronePath.get(dronePath.size()-1));
+                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmarkDistance = startLocation.distanceTo(landmark);
+
+                            }
+                        }
+
+                        //figure out next move
+                        moves = Moves(startLocation, landmark, buildingCoordinates);
+                        finalDistance = 999;
+                        finalMove = 0;
+                        for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
+                            int angleMove = entry.getKey();
+                            double distanceMove = entry.getValue();
+                            if (distanceMove < finalDistance) {
+                                finalDistance = distanceMove;
+                                finalMove = angleMove;
+                            }
+                        }
+
                         nextMove = startLocation.nextPosition(finalMove);
 
                         dronePath.add(nextMove);
-
                         System.out.println('x');
                         numberOfMoves = numberOfMoves + 1;
                         landmarkMoves = landmarkMoves + 1;
@@ -399,6 +434,8 @@ public class Algorithm {
                     }
                     System.out.println("currentlyDelivering " + currentlyDelivering);
                     System.out.println("pickingUp " + pickingUp);
+                    System.out.println("headingLandmark " + headingLandmark);
+
                 }
             }
             System.out.println("size " + allPickups.size());
@@ -483,6 +520,7 @@ public class Algorithm {
         }else{
             currentLandmark = secondLandmark;
         }
+
         if (dronePath.size()>3) {
             if ((dronePath.get(dronePath.size() - 3).longitude == startLocation.longitude && dronePath.get(dronePath.size() - 3).latitude == startLocation.latitude) || (dronePath.get(dronePath.size() - 2).longitude == startLocation.longitude && dronePath.get(dronePath.size() - 2).latitude == startLocation.latitude) || (dronePath.get(dronePath.size() - 1).longitude == startLocation.longitude && dronePath.get(dronePath.size() - 1).latitude == startLocation.latitude) ) {
                 if (currentLandmark == firstLandmark){
@@ -491,12 +529,7 @@ public class Algorithm {
                     currentLandmark = firstLandmark;
                 }
 
-                doNotEnter.add(dronePath.get(dronePath.size()-1));
-                numberOfMoves = numberOfMoves - 3;
-                dronePath.remove(dronePath.size()-1);
-                dronePath.remove(dronePath.size()-1);
-                dronePath.remove(dronePath.size()-1);
-                startLocation = (dronePath.get(dronePath.size()-1));
+
 
             }
         }
@@ -524,7 +557,7 @@ public class Algorithm {
                 LongLat cornerB;
                 if (n == (building.size() - 1)) {
                     cornerA = building.get(n);
-                    cornerB = building.get(0);
+                    cornerB = building.get(1);
                 } else {
                     cornerA = building.get(n);
                     cornerB = building.get(n + 1);
@@ -537,8 +570,10 @@ public class Algorithm {
                 Line2D line1 = new Line2D.Float(cornerAX, cornerAY, cornerBX, cornerBY);
                 Line2D line2 = new Line2D.Float(startLocationX, startLocationY, nextMoveX, nextMoveY);
                 boolean intersects = line2.intersectsLine(line1);
+                boolean contains = line1.contains(nextMoveX, nextMoveY);
 
-                if (intersects == true) {
+
+                if (intersects == true || contains == true) {
                     canMove = false;
                 }
             }
