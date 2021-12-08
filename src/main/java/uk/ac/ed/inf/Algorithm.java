@@ -368,7 +368,7 @@ public class Algorithm {
 
                     }
                 }else if (currentlyDelivering == false && pickingUp == false && headingLandmark == true) {
-
+                    System.out.println("landmark " + landmark.longitude + " " + landmark.latitude);
                     startLocation = nextMove;
                     if (landmarkMoves < 15) {
 
@@ -386,10 +386,12 @@ public class Algorithm {
                         LongLat checkMove = startLocation.nextPosition(finalMove);
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
-                        if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                        if (dronePath.size()>5) {
+                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                numberOfMoves = numberOfMoves - 3;
+                                numberOfMoves = numberOfMoves - 5;
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
