@@ -263,13 +263,11 @@ public class Algorithm {
                                 pausedPickup = true;
                                 headingLandmark = true;
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                doNotEnter.add(dronePath.get(dronePath.size()-2));
-                                doNotEnter.add(dronePath.get(dronePath.size()-3));
                                 numberOfMoves = numberOfMoves - 3;
-                                doNotEnter.add(dronePath.remove(dronePath.size()-1));
-                                doNotEnter.add(dronePath.remove(dronePath.size()-2));
-                                doNotEnter.add(dronePath.remove(dronePath.size()-3));
-                                startLocation = (dronePath.get(dronePath.size()-4));
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                startLocation = (dronePath.get(dronePath.size()-1));
                             }
                         }
                         System.out.println("THE ANGLE " + finalMove);
@@ -333,13 +331,11 @@ public class Algorithm {
                                 pausedDelivery = true;
                                 headingLandmark = true;
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                doNotEnter.add(dronePath.get(dronePath.size()-2));
-                                doNotEnter.add(dronePath.get(dronePath.size()-3));
                                 numberOfMoves = numberOfMoves - 3;
-                                doNotEnter.add(dronePath.remove(dronePath.size()-1));
-                                doNotEnter.add(dronePath.remove(dronePath.size()-2));
-                                doNotEnter.add(dronePath.remove(dronePath.size()-3));
-                                startLocation = (dronePath.get(dronePath.size()-4));
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                startLocation = (dronePath.get(dronePath.size()-1));
                             }
                         }
 
@@ -494,14 +490,14 @@ public class Algorithm {
                 }else{
                     currentLandmark = firstLandmark;
                 }
+
                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                doNotEnter.add(dronePath.get(dronePath.size()-2));
-                doNotEnter.add(dronePath.get(dronePath.size()-3));
                 numberOfMoves = numberOfMoves - 3;
-                doNotEnter.add(dronePath.remove(dronePath.size()-1));
-                doNotEnter.add(dronePath.remove(dronePath.size()-2));
-                doNotEnter.add(dronePath.remove(dronePath.size()-3));
-                startLocation = (dronePath.get(dronePath.size()-4));
+                dronePath.remove(dronePath.size()-1);
+                dronePath.remove(dronePath.size()-1);
+                dronePath.remove(dronePath.size()-1);
+                startLocation = (dronePath.get(dronePath.size()-1));
+
             }
         }
         System.out.println("landmark");
