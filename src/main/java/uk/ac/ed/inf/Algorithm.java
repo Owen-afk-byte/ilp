@@ -9,11 +9,11 @@ import com.mapbox.geojson.*;
 import com.mapbox.geojson.Point;
 
 public class Algorithm {
-    public String day;
-    public String month;
-    public String year;
-    public String firstPort;
-    public String secondPort;
+    private String day;
+    private String month;
+    private String year;
+    private String firstPort;
+    private String secondPort;
 
 
     public Algorithm(String day, String month, String year, String firstPort, String secondPort) {
@@ -31,8 +31,7 @@ public class Algorithm {
     int numberOfMoves = 0;
     int landmarkMoves = 0;
 
-    public String MainAlgorithm() {
-
+    public String mainAlgorithm() {
 
         LongLat nextMove = null;
         LongLat startLocation = null;
@@ -48,6 +47,8 @@ public class Algorithm {
 
         String pickupID = null;
         ArrayList<LongLat> deliveryLocations = new ArrayList<>();
+        ArrayList<ArrayList<Double>> justPath = new ArrayList<>();
+        ArrayList<String> justOrder = new ArrayList<>();
 
         LongLat appleton = new LongLat(-3.186874, 55.944494);
         boolean returnToAppleton = false;
@@ -61,8 +62,8 @@ public class Algorithm {
 
         HashMap<Integer, Double> moves = new HashMap<>();
         HashMap<Integer, Double> movesAgain = new HashMap<>();
-        HashMap<String, List<String>> deliveriesHashMap = new HashMap<>();
-        HashMap<Integer, List<String>> flightPathHashMap = new HashMap<>();
+        HashMap<String, ArrayList<String>> deliveriesHashMap = new HashMap<>();
+        HashMap<String, ArrayList<Double>> flightPathHashMap = new HashMap<>();
 
         ArrayList<LongLat> doNotEnter = new ArrayList<>();
 
@@ -77,8 +78,8 @@ public class Algorithm {
             Menus menus = new Menus(firstPort);
 
             Buildings buildings = new Buildings(firstPort);
-            ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings(buildings.port);
-            ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks(buildings.port);
+            ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings();
+            ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks();
 
             Words words = new Words(firstPort);
 
@@ -105,7 +106,6 @@ public class Algorithm {
                 ArrayList<LongLat> pickupsArray = new ArrayList<>();
                 for (int k = 0; k < items.size(); k++) {
                     String getPickups = menus.getW3W(items.get(k));
-                    System.out.println(getPickups);
                     LongLat W3W = words.getInfo(getPickups);
                     pickupsArray.add(W3W);
                 }
@@ -113,7 +113,7 @@ public class Algorithm {
             }
 
             if (appletonReached == true){
-                String jdbcString = "jdbc:derby://localhost:" + "port" + "/blabla";        //<----- change this jdbc string
+                String jdbcString = "jdbc:derby://localhost:" + secondPort + "/derbyDB";        //<----- change this jdbc string
                 Connection conn = DriverManager.getConnection(jdbcString);
                 Statement statement = conn.createStatement();
                 DatabaseMetaData databaseMetaData = conn.getMetaData();
@@ -122,18 +122,41 @@ public class Algorithm {
                     statement.execute("drop table deliveries");
                 }
                 statement.execute("create table deliveries(" + "orderNo char(8), " + "deliveredTo varchar(19), " + "costInPence int)");
+                PreparedStatement psDeliveries = conn.prepareStatement("insert into deliveries values (?, ?, ?)");
+                for (Map.Entry<String, ArrayList<String>> entry : deliveriesHashMap.entrySet()) {
+                    String orderNo = entry.getKey();
+                    List<String> placeAndPrice = entry.getValue();
+                    String place = placeAndPrice.get(0);
+                    int price = Integer.valueOf(placeAndPrice.get(1));
+                    psDeliveries.setString(1, orderNo);
+                    psDeliveries.setString(2, place);
+                    psDeliveries.setInt(3, price);
+                    psDeliveries.execute();
+                }
+
 
                 ResultSet resultSet2 = databaseMetaData.getTables(null, null, "FLIGHTPATH", null);
                 if (resultSet.next()){
                     statement.execute("drop table flightpath");
                 }
                 statement.execute("create table flightpath(" + "orderNo char(8), " + "fromLongitude double, " + "fromLatitude double, " + "angle integer, " + "toLongitude double, " + "toLatitude double)");
+                PreparedStatement psFlightPath = conn.prepareStatement("insert into flightpath values (?, ?, ?, ?, ?, ?)");
+                for (int d = 0; d < justOrder.size(); d++) {
+                    String orderNo = justOrder.get(d);
+                    List<Double> flight = justPath.get(d);
+                    psFlightPath.setString(1, orderNo);
+                    psFlightPath.setDouble(2, flight.get(0));
+                    psFlightPath.setDouble(3, flight.get(1));
+                    psFlightPath.setInt(4, Integer.valueOf(String.valueOf(flight.get(2))));
+                    psFlightPath.setDouble(5, flight.get(3));
+                    psFlightPath.setDouble(6, flight.get(4));
+                    psFlightPath.execute();
+                }
             }
 
             //loop until deliveries are complete or drone uses all moves
             while (numberOfMoves < 1500 && numberDelivered < date.size() && appletonReached == false) {
                 System.out.println(numberOfMoves);
-                System.out.println('x');
                 if (numberOfMoves == 0) {
                     startLocation = appleton;
                 } else if (allDelivered == true) {
@@ -141,21 +164,9 @@ public class Algorithm {
                 } else {
                     startLocation = nextMove;
                 }
-                /**ArrayList<LongLat> appletonRoute = AppletonRoute(startLocation, appleton, buildingCoordinates);
-                if ((numberOfMoves + appletonRoute.size() > 1500)){
-                    numberOfMoves = numberOfMoves - 1;
-                    dronePath.remove(dronePath.size()-1);
-                    dronePath.addAll(appletonRoute);
-                    currentlyDelivering = false;
-                    pickingUp = false;
-                    returnedToAppleton = true;
-                }*/
-                System.out.println('x');
                 if (returnToAppleton == true) {
 
-                    System.out.println("keeman");
                     startLocation = nextMove;
-
 
                     if (startLocation.closeTo(appleton)) {
                         returnToAppleton = false;
@@ -163,7 +174,7 @@ public class Algorithm {
                     }else{
 
                         //figure out next move
-                        moves = Moves(startLocation, appleton, buildingCoordinates);
+                        moves = moves(startLocation, appleton, buildingCoordinates);
 
                         //finds the closest angle to the destination
                         double finalDistance = 999;
@@ -185,7 +196,7 @@ public class Algorithm {
                             if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
 
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmark = closestLandmark(startLocation, landmarkCoordinates);
                                 landmarkDistance = startLocation.distanceTo(landmark);
                                 pickingUp = false;
                                 pausedPickup = true;
@@ -194,7 +205,7 @@ public class Algorithm {
                             }
                         }
                         //figure out next move
-                        moves = Moves(startLocation, appleton, buildingCoordinates);
+                        moves = moves(startLocation, appleton, buildingCoordinates);
 
                         //finds the closest angle to the destination
                         finalDistance = 999;
@@ -210,12 +221,20 @@ public class Algorithm {
 
                         nextMove = startLocation.nextPosition(finalMove);
                         dronePath.add(nextMove);
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
+
                         numberOfMoves = numberOfMoves +1;
                     }
                 }
                 else if (currentlyDelivering == false && pickingUp == false && headingLandmark == false){
 
-                    System.out.println("size " + allPickups.size());
                     if (allPickups.size() == 0){
                         numberOfMoves = 1501;
                     }else {
@@ -250,7 +269,6 @@ public class Algorithm {
                         //get pickups for certain pickup id
                         //should be no more than 2 pickups
                         ArrayList<LongLat> items = allPickups.get(pickupID);
-                        System.out.println(pickupID);
                         Set<LongLat> set = new HashSet<>(items);
                         items.clear();
                         items.addAll(set);
@@ -274,7 +292,7 @@ public class Algorithm {
                         dateCoordinates.remove(pickupID);
 
                         //figure out next move
-                        moves = Moves(startLocation, pickupOne, buildingCoordinates);
+                        moves = moves(startLocation, pickupOne, buildingCoordinates);
                         double finalDistance = 999;
                         int finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
@@ -288,31 +306,41 @@ public class Algorithm {
                         nextMove = startLocation.nextPosition(finalMove);
 
                         dronePath.add(nextMove);
-                        System.out.println('a');
-                        System.out.println('l');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         pickingUp = true;
-                        System.out.println('l');
                         numberOfMoves = numberOfMoves + 1;
 
                     }
 
                 }else if (currentlyDelivering == false && pickingUp == true){
-                    System.out.println('x');
+
                     startLocation = nextMove;
-                    System.out.println(startLocation);
-                    System.out.println(pickupOne);
+
                     if (startLocation.closeTo(pickupOne)){
 
                         int angle = -999;
                         System.out.println(angle);
                         nextMove = startLocation.nextPosition(angle);
                         dronePath.add(nextMove);
-                        System.out.println('b');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) angle);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         numberOfMoves = numberOfMoves  +1;
 
                         pickupOne = pickupTwo;
                         pickupTwo = null;
-                        System.out.println('l');
                         if (pickupOne==null && pickupTwo==null){
                             pickingUp = false;
                             currentlyDelivering = true;
@@ -320,9 +348,7 @@ public class Algorithm {
                     }else{
 
                         //figure out next move
-                        moves = Moves(startLocation, pickupOne, buildingCoordinates);
-                        System.out.println("finalDistance zdfbsfbs " + startLocation.longitude+ " " + startLocation.latitude);
-                        System.out.println("finalMove fdbdbds " + pickupOne.longitude+ " " + pickupOne.latitude);
+                        moves = moves(startLocation, pickupOne, buildingCoordinates);
 
                         //finds the closest angle to the destination
                         double finalDistance = 999;
@@ -340,15 +366,27 @@ public class Algorithm {
                         LongLat checkMove = startLocation.nextPosition(finalMove);
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
-                        if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                        if (dronePath.size()>5) {
+                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                numberOfMoves = numberOfMoves - 3;
+                                numberOfMoves = numberOfMoves - 5;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmark = closestLandmark(startLocation, landmarkCoordinates);
                                 landmarkDistance = startLocation.distanceTo(landmark);
                                 pickingUp = false;
                                 pausedPickup = true;
@@ -356,12 +394,9 @@ public class Algorithm {
 
                             }
                         }
-                        System.out.println("THE ANGLE " + finalMove);
 
                         //figure out next move
-                        moves = Moves(startLocation, pickupOne, buildingCoordinates);
-                        System.out.println("finalDistance zdfbsfbs " + startLocation.longitude+ " " + startLocation.latitude);
-                        System.out.println("finalMove fdbdbds " + pickupOne.longitude+ " " + pickupOne.latitude);
+                        moves = moves(startLocation, pickupOne, buildingCoordinates);
 
                         //finds the closest angle to the destination
                         finalDistance = 999;
@@ -377,7 +412,14 @@ public class Algorithm {
 
                         nextMove = startLocation.nextPosition(finalMove);
                         dronePath.add(nextMove);
-                        System.out.println('c');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         numberOfMoves = numberOfMoves +1;
                     }
                 }else if (currentlyDelivering == true && pickingUp == false) {
@@ -400,7 +442,14 @@ public class Algorithm {
                         int angle = -999;
                         nextMove = startLocation.nextPosition(angle);
                         dronePath.add(nextMove);
-                        System.out.println('d');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) angle);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         numberOfMoves = numberOfMoves + 1;
 
                         currentlyDelivering = false;
@@ -409,12 +458,11 @@ public class Algorithm {
                             allDelivered = true;
                         }
 
-
                     } else {
 
 
                         //figure out next move
-                        moves = Moves(startLocation, deliveryLocation, buildingCoordinates);
+                        moves = moves(startLocation, deliveryLocation, buildingCoordinates);
                         double finalDistance = 999;
                         int finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
@@ -428,16 +476,27 @@ public class Algorithm {
                         LongLat checkMove = startLocation.nextPosition(finalMove);
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
-                        if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
-                                System.out.println("hello there");
+                        if (dronePath.size()>5) {
+                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                numberOfMoves = numberOfMoves - 3;
+                                numberOfMoves = numberOfMoves - 5;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmark = closestLandmark(startLocation, landmarkCoordinates);
                                 landmarkDistance = startLocation.distanceTo(landmark);
                                 currentlyDelivering = false;
                                 pausedDelivery = true;
@@ -447,7 +506,7 @@ public class Algorithm {
                         }
 
                         //figure out next move
-                        moves = Moves(startLocation, deliveryLocation, buildingCoordinates);
+                        moves = moves(startLocation, deliveryLocation, buildingCoordinates);
                         finalDistance = 999;
                         finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
@@ -459,21 +518,26 @@ public class Algorithm {
                             }
                         }
 
-                        System.out.println("THE ANGLE " + finalMove);
                         nextMove = startLocation.nextPosition(finalMove);
                         dronePath.add(nextMove);
-                        System.out.println('e');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         numberOfMoves = numberOfMoves + 1;
 
 
 
                     }
                 }else if (currentlyDelivering == false && pickingUp == false && headingLandmark == true) {
-                    System.out.println("landmark " + landmark.longitude + " " + landmark.latitude);
                     startLocation = nextMove;
                     if (landmarkMoves < 15) {
 
-                        moves = Moves(startLocation, landmark, buildingCoordinates);
+                        moves = moves(startLocation, landmark, buildingCoordinates);
                         double finalDistance = 999;
                         int finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
@@ -488,23 +552,33 @@ public class Algorithm {
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
                         if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                doNotEnter.add(dronePath.get(dronePath.size()-2));
-                                doNotEnter.add(dronePath.get(dronePath.size()-3));
-                                numberOfMoves = numberOfMoves - 3;
+                                numberOfMoves = numberOfMoves - 5;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                dronePath.remove(dronePath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justPath.remove(justPath.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
+                                justOrder.remove(justOrder.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
-                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmark = closestLandmark(startLocation, landmarkCoordinates);
                                 landmarkDistance = startLocation.distanceTo(landmark);
 
                             }
                         }
 
                         //figure out next move
-                        moves = Moves(startLocation, landmark, buildingCoordinates);
+                        moves = moves(startLocation, landmark, buildingCoordinates);
                         finalDistance = 999;
                         finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
@@ -519,7 +593,14 @@ public class Algorithm {
                         nextMove = startLocation.nextPosition(finalMove);
 
                         dronePath.add(nextMove);
-                        System.out.println('x');
+                        ArrayList<Double> dronePathArray = new ArrayList<>();
+                        dronePathArray.add(startLocation.longitude);
+                        dronePathArray.add(startLocation.latitude);
+                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add(nextMove.longitude);
+                        dronePathArray.add(nextMove.latitude);
+                        justPath.add(dronePathArray);
+                        justOrder.add(pickupID);
                         numberOfMoves = numberOfMoves + 1;
                         landmarkMoves = landmarkMoves + 1;
                     }else{
@@ -535,13 +616,9 @@ public class Algorithm {
                             pausedPickup = false;
                         }
                     }
-                    System.out.println("currentlyDelivering " + currentlyDelivering);
-                    System.out.println("pickingUp " + pickingUp);
-                    System.out.println("headingLandmark " + headingLandmark);
 
                 }
             }
-            System.out.println("size " + allPickups.size());
         } catch (NullPointerException e) {
             System.err.println("Null Pointer Exception");
             System.exit(1); // Exit the application
@@ -553,6 +630,7 @@ public class Algorithm {
         ArrayList<LongLat> finalDronePath = new ArrayList<>();
         finalDronePath.add(appleton);
         finalDronePath.addAll(dronePath);
+
 
         int noPoints = 0;
         ArrayList<Point> points = new ArrayList<>();
@@ -570,57 +648,10 @@ public class Algorithm {
         FeatureCollection featureCollection = FeatureCollection.fromFeature(feature);
         String jsonString = featureCollection.toJson();
 
-        System.out.println(finalDronePath);
         return jsonString;
     }
 
-
-    /**public  ArrayList<LongLat> AppletonRoute(LongLat startLocation, LongLat appleton, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
-        LongLat tempMove = null;
-        ArrayList<LongLat> tempPath = new ArrayList<>();
-        int index = 0;
-        boolean close = false;
-        while (close == false) {
-            //find angle to get to next point
-            if (index != 0){
-                startLocation = tempMove;
-            }
-            double xa = startLocation.longitude;
-            double ya = startLocation.latitude;
-            double xb = appleton.longitude;
-            double yb = appleton.latitude;
-            System.out.println("apple");
-            System.out.println(startLocation.longitude);
-            System.out.println(startLocation.latitude);
-            System.out.println(appleton.longitude);
-            System.out.println(appleton.latitude);
-            double slope = Math.atan2((yb-ya), (xb-xa));
-            float angle = (float) Math.toDegrees(slope);
-            if(angle < 0){
-                angle += 360;
-            }
-            angle = angle % 360;
-            int rounded = ((int) (Math.round(angle/10.0) * 10));
-            System.out.println(slope);
-            System.out.println(angle);
-            System.out.println(rounded);
-
-            tempMove = SafeMove(rounded, startLocation, buildingCoordinates);
-            tempPath.add(tempMove);
-            index = index + 1;
-            if (tempMove.closeTo(appleton)){
-                close = true;
-            }
-            System.out.println(tempMove.longitude);
-            System.out.println(tempMove.latitude);
-            System.out.println(appleton.longitude);
-            System.out.println(appleton.latitude);
-            System.out.println(close);
-            System.out.println("apple");
-        }
-        return tempPath;
-    }*/
-    public LongLat ClosestLandmark(LongLat startLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates, ArrayList<LongLat> landmarkCoordinates) {
+    public LongLat closestLandmark(LongLat startLocation, ArrayList<LongLat> landmarkCoordinates) {
 
         LongLat firstLandmark = landmarkCoordinates.get(0);
         LongLat secondLandmark = landmarkCoordinates.get(1);
@@ -640,13 +671,11 @@ public class Algorithm {
                 }
             }
         }
-        System.out.println("landmark");
-        System.out.println("keeman");
 
     return currentLandmark;
     }
 
-    public boolean SafeMove(int angle, LongLat startLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
+    public boolean safeMove(int angle, LongLat startLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
 
         LongLat nextMove = startLocation.nextPosition(angle);
         boolean moveOkay;
@@ -703,85 +732,17 @@ public class Algorithm {
         } else {
             moveOkay = false;
         }
-        //System.out.println('l');
 
         return moveOkay;
     }
 
-    public HashMap<Integer, Double> Moves(LongLat startLocation, LongLat nextLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
+    public HashMap<Integer, Double> moves(LongLat startLocation, LongLat nextLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
 
         HashMap<Integer, Double> tempAngles = new HashMap<>();
 
-        /**
-        for (int y = 0; y < 36; y++) {
-            int angle = y * 10;
-            boolean checkSafe = SafeMove(angle, startLocation, buildingCoordinates);
-
-            if (checkSafe == true) {
-                LongLat tempMoveInner = startLocation.nextPosition(angle);
-                int trues = 0;
-                int falses = 0;
-                for (int b = 0; b < 36; b++) {
-                    int angleInner = b * 10;
-                    boolean checkSafeInner = SafeMove(angleInner, tempMoveInner, buildingCoordinates);
-                    System.out.println("SAFE " + checkSafeInner);
-                    if (checkSafeInner == true) {
-                        trues = trues + 1;
-                    } else {
-                        falses = falses + 1;
-                    }
-                }
-                if (falses > trues) {
-                    doNotEnter.add(tempMoveInner);
-                    doNotEnter.add(startLocation);
-                }
-            }
-        }
-        */
-
-
-        /**
-        int z = dronePath.size();
-        if (z>0) {
-            LongLat getD = dronePath.get(z - 1);
-            double longitude = getD.longitude;
-            double latitude = getD.latitude;
-            for (int e = 0; e < doNotEnter.size(); e++) {
-                LongLat dne = doNotEnter.get(e);
-                double dneLongitude = dne.longitude;
-                double dneLatitude = dne.latitude;
-                if (longitude == dneLongitude && latitude == dneLatitude) {
-                    dronePath.remove(z-1);
-                    numberOfMoves = numberOfMoves - 1;
-                }
-            }
-        }
-        */
-
-
         for (int a = 0; a < 36; a++) {
             int angle = a * 10;
-            boolean checkSafe = SafeMove(angle, startLocation, buildingCoordinates);
-
-            System.out.println(checkSafe);
-
-            LongLat nextPossiblePosition = startLocation.nextPosition(angle);
-            double nPPLong = nextPossiblePosition.longitude;
-            double nPPLat = nextPossiblePosition.latitude;
-
-            boolean contains = false;
-
-            if (dronePath.size()>0) {
-                for (int d = 0; d < dronePath.size(); d++) {
-                    LongLat dP = dronePath.get(d);
-                    double dPLong = dP.longitude;
-                    double dPLat = dP.latitude;
-                    if (dPLat == nPPLat && dPLong == nPPLong) {
-                        contains = true;
-                    }
-                }
-            }
-
+            boolean checkSafe = safeMove(angle, startLocation, buildingCoordinates);
 
             if (checkSafe == true ) {
                 LongLat tempMove = startLocation.nextPosition(angle);

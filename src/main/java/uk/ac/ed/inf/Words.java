@@ -15,12 +15,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Words {
-    public String name;
     public String port;
 
     /**
      * A constructor class used to represent the name and port used for the server
-     * @param name a string representing the server name
      * @param port a string representing the server port
      */
     public Words(String port){
@@ -62,7 +60,7 @@ public class Words {
 
 
         } catch (ConnectException e) {
-            System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
+            System.out.println("Fatal error: Unable to connect to localhost at port " + port + ".");
             System.exit(1); // Exit the application
         } catch (IOException | InterruptedException e) {
             System.out.println(" ");

@@ -15,7 +15,7 @@ public class App
     {
         System.out.println("hello world");
         Algorithm algorithm = new Algorithm(args[0], args[1], args[2], args[3], args[4]);
-        String flightPath = algorithm.MainAlgorithm();
+        String flightPath = algorithm.mainAlgorithm();
 
         try {
             File file = new File("drone-"+args[0]+"-"+args[1]+"-"+args[2]+".geojson");

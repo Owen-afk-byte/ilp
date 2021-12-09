@@ -11,8 +11,8 @@ public class AlgorithmTest {
 
     @Test
     public void testDate1() {
-        Algorithm algorithm = new Algorithm("11", "04", "2022", "9898", "9876");
-        String answer = algorithm.MainAlgorithm();
+        Algorithm algorithm = new Algorithm("27", "12", "2023", "9898", "9876");
+        String answer = algorithm.mainAlgorithm();
         //assertEquals("dfbnodn", answer);
     }
 

@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Buildings {
-    public String port;
+    private String port;
 
     /**
      * A constructor class used to represent the name and port used for the server
@@ -27,11 +27,11 @@ public class Buildings {
 
     private static final HttpClient client = HttpClient.newHttpClient();
 
-    public static ArrayList<ArrayList<LongLat>> getBuildings(String port) {
+    public ArrayList<ArrayList<LongLat>> getBuildings() {
 
         ArrayList<ArrayList<LongLat>> buildingsArray = new ArrayList<>();
 
-        String urlString = "http://localhost:" + port + "/buildings/no-fly-zones.geojson";
+        String urlString = "http://localhost:" + this.port + "/buildings/no-fly-zones.geojson";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();
@@ -82,11 +82,11 @@ public class Buildings {
         return buildingsArray;
     }
 
-    public static ArrayList<LongLat> getLandmarks(String port) {
+    public ArrayList<LongLat> getLandmarks() {
 
         ArrayList<LongLat> landmarksArray = new ArrayList<>();
 
-        String urlString = "http://localhost:" + port + "/buildings/landmarks.geojson";
+        String urlString = "http://localhost:" + this.port + "/buildings/landmarks.geojson";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();
