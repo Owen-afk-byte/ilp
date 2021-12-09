@@ -2,26 +2,26 @@ package uk.ac.ed.inf;
 
 import java.awt.geom.Line2D;
 import java.net.http.HttpClient;
+import java.sql.*;
 import java.util.*;
 
 import com.mapbox.geojson.*;
 import com.mapbox.geojson.Point;
 
 public class Algorithm {
-    public String firstName;
+    public String day;
+    public String month;
+    public String year;
     public String firstPort;
-    public String secondName;
     public String secondPort;
-    public String dateString;
-    public String menusString;
 
-    public Algorithm(String firstName, String firstPort, String secondName, String secondPort, String dateString, String menusString) {
-        this.firstName = firstName;
+
+    public Algorithm(String day, String month, String year, String firstPort, String secondPort) {
+        this.day = day;
+        this.month = month;
+        this.year = year;
         this.firstPort = firstPort;
-        this.secondName = secondName;
         this.secondPort = secondPort;
-        this.dateString = dateString;
-        this.menusString = menusString;
     }
 
     private static final HttpClient client = HttpClient.newHttpClient();
@@ -32,7 +32,6 @@ public class Algorithm {
     int landmarkMoves = 0;
 
     public String MainAlgorithm() {
-
 
 
         LongLat nextMove = null;
@@ -51,7 +50,7 @@ public class Algorithm {
         ArrayList<LongLat> deliveryLocations = new ArrayList<>();
 
         LongLat appleton = new LongLat(-3.186874, 55.944494);
-        boolean returnedToAppleton = false;
+        boolean returnToAppleton = false;
         boolean appletonReached = false;
         boolean currentlyDelivering = false;
         boolean pausedDelivery = false;
@@ -62,25 +61,26 @@ public class Algorithm {
 
         HashMap<Integer, Double> moves = new HashMap<>();
         HashMap<Integer, Double> movesAgain = new HashMap<>();
+        HashMap<String, List<String>> deliveriesHashMap = new HashMap<>();
+        HashMap<Integer, List<String>> flightPathHashMap = new HashMap<>();
 
         ArrayList<LongLat> doNotEnter = new ArrayList<>();
 
         try {
 
             // read in everything
-            Orders orders = new Orders(secondName, secondPort);
-            ArrayList<ArrayList<String>> date = orders.getDates(dateString);
+            Orders orders = new Orders(secondPort);
+            ArrayList<ArrayList<String>> date = orders.getDates(year, month, day);
             HashMap<String, ArrayList<String>> details = orders.getDetails(date);
 
 
-            Menus menus = new Menus(firstName, firstPort);
-            int totalCost = menus.getDeliveryCost(menusString);
+            Menus menus = new Menus(firstPort);
 
-            Buildings buildings = new Buildings(firstName, firstPort);
-            ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings(buildings.name, buildings.port);
-            ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks(buildings.name, buildings.port);
+            Buildings buildings = new Buildings(firstPort);
+            ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings(buildings.port);
+            ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks(buildings.port);
 
-            Words words = new Words(firstName, firstPort);
+            Words words = new Words(firstPort);
 
             //puts orders in hash table and LongLats in array
             HashMap<String, ArrayList<String>> dateHash = new HashMap<>();
@@ -112,12 +112,32 @@ public class Algorithm {
                 allPickups.put(entry.getKey(), pickupsArray);
             }
 
+            if (appletonReached == true){
+                String jdbcString = "jdbc:derby://localhost:" + "port" + "/blabla";        //<----- change this jdbc string
+                Connection conn = DriverManager.getConnection(jdbcString);
+                Statement statement = conn.createStatement();
+                DatabaseMetaData databaseMetaData = conn.getMetaData();
+                ResultSet resultSet = databaseMetaData.getTables(null, null, "DELIVERIES", null);
+                if (resultSet.next()){
+                    statement.execute("drop table deliveries");
+                }
+                statement.execute("create table deliveries(" + "orderNo char(8), " + "deliveredTo varchar(19), " + "costInPence int)");
+
+                ResultSet resultSet2 = databaseMetaData.getTables(null, null, "FLIGHTPATH", null);
+                if (resultSet.next()){
+                    statement.execute("drop table flightpath");
+                }
+                statement.execute("create table flightpath(" + "orderNo char(8), " + "fromLongitude double, " + "fromLatitude double, " + "angle integer, " + "toLongitude double, " + "toLatitude double)");
+            }
+
             //loop until deliveries are complete or drone uses all moves
-            while (numberOfMoves <= 1500 && numberDelivered < date.size() && returnedToAppleton == false) {
+            while (numberOfMoves < 1500 && numberDelivered < date.size() && appletonReached == false) {
                 System.out.println(numberOfMoves);
                 System.out.println('x');
                 if (numberOfMoves == 0) {
                     startLocation = appleton;
+                } else if (allDelivered == true) {
+                    returnToAppleton = true;
                 } else {
                     startLocation = nextMove;
                 }
@@ -131,7 +151,69 @@ public class Algorithm {
                     returnedToAppleton = true;
                 }*/
                 System.out.println('x');
-                if (currentlyDelivering == false && pickingUp == false && headingLandmark == false){
+                if (returnToAppleton == true) {
+
+                    System.out.println("keeman");
+                    startLocation = nextMove;
+
+
+                    if (startLocation.closeTo(appleton)) {
+                        returnToAppleton = false;
+                        appletonReached = true;
+                    }else{
+
+                        //figure out next move
+                        moves = Moves(startLocation, appleton, buildingCoordinates);
+
+                        //finds the closest angle to the destination
+                        double finalDistance = 999;
+                        int finalMove = 0;
+                        int angleMove;
+                        double distanceMove;
+                        for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
+                            angleMove = entry.getKey();
+                            distanceMove = entry.getValue();
+                            if (distanceMove < finalDistance) {
+                                finalDistance = distanceMove;
+                                finalMove = angleMove;
+                            }
+                        }
+                        LongLat checkMove = startLocation.nextPosition(finalMove);
+                        double checkMoveLong = checkMove.longitude;
+                        double checkMoveLat = checkMove.latitude;
+                        if (dronePath.size()>3) {
+                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                                doNotEnter.add(dronePath.get(dronePath.size()-1));
+
+                                landmark = ClosestLandmark(startLocation, buildingCoordinates, landmarkCoordinates);
+                                landmarkDistance = startLocation.distanceTo(landmark);
+                                pickingUp = false;
+                                pausedPickup = true;
+                                headingLandmark = true;
+
+                            }
+                        }
+                        //figure out next move
+                        moves = Moves(startLocation, appleton, buildingCoordinates);
+
+                        //finds the closest angle to the destination
+                        finalDistance = 999;
+                        finalMove = 0;
+                        for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
+                            angleMove = entry.getKey();
+                            distanceMove = entry.getValue();
+                            if (distanceMove < finalDistance) {
+                                finalDistance = distanceMove;
+                                finalMove = angleMove;
+                            }
+                        }
+
+                        nextMove = startLocation.nextPosition(finalMove);
+                        dronePath.add(nextMove);
+                        numberOfMoves = numberOfMoves +1;
+                    }
+                }
+                else if (currentlyDelivering == false && pickingUp == false && headingLandmark == false){
 
                     System.out.println("size " + allPickups.size());
                     if (allPickups.size() == 0){
@@ -302,6 +384,19 @@ public class Algorithm {
 
                     startLocation = nextMove;
                     if (startLocation.closeTo(deliveryLocation)) {
+
+                        ArrayList<String> values = dateHash.get(pickupID);
+                        String deliverTo = values.get(2);
+
+                        ArrayList<String> items = details.get(pickupID);
+                        String[] itemsArray = items.toArray(new String[0]);
+                        int totalCost = menus.getDeliveryCost(itemsArray);
+
+                        ArrayList<String> deliveriesList = new ArrayList<>();
+                        deliveriesList.add(deliverTo);
+                        deliveriesList.add(String.valueOf(totalCost));
+                        deliveriesHashMap.put(pickupID, deliveriesList);
+
                         int angle = -999;
                         nextMove = startLocation.nextPosition(angle);
                         dronePath.add(nextMove);
@@ -309,6 +404,12 @@ public class Algorithm {
                         numberOfMoves = numberOfMoves + 1;
 
                         currentlyDelivering = false;
+
+                        if (dateCoordinates.isEmpty()) {
+                            allDelivered = true;
+                        }
+
+
                     } else {
 
 
@@ -386,12 +487,12 @@ public class Algorithm {
                         LongLat checkMove = startLocation.nextPosition(finalMove);
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
-                        if (dronePath.size()>5) {
-                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                        if (dronePath.size()>3) {
+                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                numberOfMoves = numberOfMoves - 5;
-                                dronePath.remove(dronePath.size()-1);
-                                dronePath.remove(dronePath.size()-1);
+                                doNotEnter.add(dronePath.get(dronePath.size()-2));
+                                doNotEnter.add(dronePath.get(dronePath.size()-3));
+                                numberOfMoves = numberOfMoves - 3;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
@@ -442,14 +543,21 @@ public class Algorithm {
             }
             System.out.println("size " + allPickups.size());
         } catch (NullPointerException e) {
-            System.out.println("Null Pointer Exception");
+            System.err.println("Null Pointer Exception");
+            System.exit(1); // Exit the application
+        } catch (SQLException e) {
+            System.err.println("SQLException");
             System.exit(1); // Exit the application
         }
 
+        ArrayList<LongLat> finalDronePath = new ArrayList<>();
+        finalDronePath.add(appleton);
+        finalDronePath.addAll(dronePath);
+
         int noPoints = 0;
         ArrayList<Point> points = new ArrayList<>();
-        for (int d = 0; d < dronePath.size(); d++) {
-            LongLat longLat = dronePath.get(d);
+        for (int d = 0; d < finalDronePath.size(); d++) {
+            LongLat longLat = finalDronePath.get(d);
             Point point = Point.fromLngLat(longLat.longitude, longLat.latitude);
             points.add(point);
             noPoints = noPoints +1;
@@ -462,7 +570,7 @@ public class Algorithm {
         FeatureCollection featureCollection = FeatureCollection.fromFeature(feature);
         String jsonString = featureCollection.toJson();
 
-        System.out.println(dronePath);
+        System.out.println(finalDronePath);
         return jsonString;
     }
 
@@ -530,12 +638,10 @@ public class Algorithm {
                 }else{
                     currentLandmark = firstLandmark;
                 }
-
-
-
             }
         }
         System.out.println("landmark");
+        System.out.println("keeman");
 
     return currentLandmark;
     }

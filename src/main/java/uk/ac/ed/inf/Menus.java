@@ -16,16 +16,13 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.util.ArrayList;
 
 public class Menus {
-    public String name;
     public String port;
 
     /**
      * A constructor class used to represent the name and port used for the server
-     * @param name a string representing the server name
      * @param port a string representing the server port
      */
-    public Menus(String name,String port){
-        this.name = name;
+    public Menus(String port){
         this.port = port;
     }
 
@@ -39,7 +36,7 @@ public class Menus {
     public int getDeliveryCost(String... strings) {
         int total = 50;
 
-        String urlString = "http://" + name + ":" + port + "/menus/menus.json";
+        String urlString = "http://localhost:" + port + "/menus/menus.json";
 
         try {
             // HttpRequest assumes that it is a GET request by default.
@@ -71,7 +68,7 @@ public class Menus {
             }
 
         } catch (ConnectException e) {
-            System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
+            System.out.println("Fatal error: Unable to connect to localhost at port " + port + ".");
             System.exit(1); // Exit the application
         } catch (IOException | InterruptedException e) {
             System.out.println(" ");
@@ -84,7 +81,7 @@ public class Menus {
     public String getW3W(String string) {
 
         String W3W = null;
-        String urlString = "http://" + name + ":" + port + "/menus/menus.json";
+        String urlString = "http://localhost:" + port + "/menus/menus.json";
 
         try {
             // HttpRequest assumes that it is a GET request by default.
@@ -111,7 +108,7 @@ public class Menus {
                 }
             }
         } catch (ConnectException e) {
-            System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
+            System.out.println("Fatal error: Unable to connect to localhost at port " + port + ".");
             System.exit(1); // Exit the application
         } catch (IOException | InterruptedException e) {
             System.out.println(" ");

@@ -23,8 +23,7 @@ public class Words {
      * @param name a string representing the server name
      * @param port a string representing the server port
      */
-    public Words(String name,String port){
-        this.name = name;
+    public Words(String port){
         this.port = port;
     }
 
@@ -36,12 +35,11 @@ public class Words {
      * @return an integer representing the cost of all of the items + the 50p for delivery
      */
     public LongLat getInfo(String string) {
-        //ArrayList<float[]> coordinatesFinal = new ArrayList<>();
         LongLat coordsArray = new LongLat(0, 0);
 
         System.out.println(string);
         String splitStr[] = string.split("\\.");
-        String urlString = "http://" + name + ":" + port + "/words/" + splitStr[0] + "/" + splitStr[1] + "/" + splitStr[2] + "/details.json";
+        String urlString = "http://localhost:" + port + "/words/" + splitStr[0] + "/" + splitStr[1] + "/" + splitStr[2] + "/details.json";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();

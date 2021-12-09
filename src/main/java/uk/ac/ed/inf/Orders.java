@@ -18,29 +18,28 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Orders {
-    public String name;
     public String port;
 
 
     /**
      * A constructor class used to represent the name and port used for the server
-     * @param name a string representing the server name
      * @param port a string representing the server port
      */
-    public Orders(String name,String port){
-        this.name = name;
+    public Orders(String port){
         this.port = port;
     }
 
     /**
      * Takes in list of items and calculates the delivery cost of given items
-     * @param string a string representing the items that we need to find the cost of
      * @return an integer representing the cost of all of the items + the 50p for delivery
      */
-    public ArrayList<ArrayList<String>> getDates(String string) {
+    public ArrayList<ArrayList<String>> getDates(String year, String month, String day) {
         ArrayList<ArrayList<String>> dateList = new ArrayList<>();
 
-        String jdbcString = "jdbc:derby://" + name + ":" + port + "/derbyDB";
+        String string = year + "-" + month + "-" + day;
+        System.out.println(string);
+
+        String jdbcString = "jdbc:derby://localhost:" + port + "/derbyDB";
 
         try {
             Connection conn = DriverManager.getConnection(jdbcString);
@@ -81,7 +80,7 @@ public class Orders {
         ArrayList<ArrayList<String>> detailsList = new ArrayList<>();
         HashMap<String, ArrayList<String>> conciseDetails = new HashMap<>();
 
-        String jdbcString = "jdbc:derby://" + name + ":" + port + "/derbyDB";
+        String jdbcString = "jdbc:derby://localhost:" + port + "/derbyDB";
 
         try {
             Connection conn = DriverManager.getConnection(jdbcString);

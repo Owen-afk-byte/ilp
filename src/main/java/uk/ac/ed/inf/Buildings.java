@@ -15,26 +15,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Buildings {
-    public String name;
     public String port;
 
     /**
      * A constructor class used to represent the name and port used for the server
-     * @param name a string representing the server name
      * @param port a string representing the server port
      */
-    public Buildings(String name,String port){
-        this.name = name;
+    public Buildings(String port){
         this.port = port;
     }
 
     private static final HttpClient client = HttpClient.newHttpClient();
 
-    public static ArrayList<ArrayList<LongLat>> getBuildings(String name, String port) {
+    public static ArrayList<ArrayList<LongLat>> getBuildings(String port) {
 
         ArrayList<ArrayList<LongLat>> buildingsArray = new ArrayList<>();
 
-        String urlString = "http://" + name + ":" + port + "/buildings/no-fly-zones.geojson";
+        String urlString = "http://localhost:" + port + "/buildings/no-fly-zones.geojson";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();
@@ -71,7 +68,7 @@ public class Buildings {
                 System.out.println(buildingsArray.size());
             }
         } catch (ConnectException e) {
-            System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
+            System.out.println("Fatal error: Unable to connect to localhost at port " + port + ".");
             System.exit(1); // Exit the application
         } catch (IOException | InterruptedException e) {
             System.out.println(" ");
@@ -85,11 +82,11 @@ public class Buildings {
         return buildingsArray;
     }
 
-    public static ArrayList<LongLat> getLandmarks(String name, String port) {
+    public static ArrayList<LongLat> getLandmarks(String port) {
 
         ArrayList<LongLat> landmarksArray = new ArrayList<>();
 
-        String urlString = "http://" + name + ":" + port + "/buildings/landmarks.geojson";
+        String urlString = "http://localhost:" + port + "/buildings/landmarks.geojson";
         try {
             // HttpRequest assumes that it is a GET request by default.
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(urlString)).build();
@@ -117,7 +114,7 @@ public class Buildings {
                 landmarksArray.add(longLat);
             }
         } catch (ConnectException e) {
-            System.out.println("Fatal error: Unable to connect to " + name + " at port " + port + ".");
+            System.out.println("Fatal error: Unable to connect to localhost at port " + port + ".");
             System.exit(1); // Exit the application
         } catch (IOException | InterruptedException e) {
             System.out.println(" ");
