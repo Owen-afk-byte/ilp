@@ -30,6 +30,7 @@ public class Algorithm {
     ArrayList<LongLat> dronePath = new ArrayList<>();
     int numberOfMoves = 0;
     int landmarkMoves = 0;
+    LongLat appleton = new LongLat(-3.186874, 55.944494);
 
     public String mainAlgorithm() {
 
@@ -50,7 +51,7 @@ public class Algorithm {
         ArrayList<ArrayList<Double>> justPath = new ArrayList<>();
         ArrayList<String> justOrder = new ArrayList<>();
 
-        LongLat appleton = new LongLat(-3.186874, 55.944494);
+
         boolean returnToAppleton = false;
         boolean appletonReached = false;
         boolean currentlyDelivering = false;
@@ -136,7 +137,7 @@ public class Algorithm {
 
 
                 ResultSet resultSet2 = databaseMetaData.getTables(null, null, "FLIGHTPATH", null);
-                if (resultSet.next()){
+                if (resultSet2.next()){
                     statement.execute("drop table flightpath");
                 }
                 statement.execute("create table flightpath(" + "orderNo char(8), " + "fromLongitude double, " + "fromLatitude double, " + "angle integer, " + "toLongitude double, " + "toLatitude double)");
@@ -157,12 +158,17 @@ public class Algorithm {
             //loop until deliveries are complete or drone uses all moves
             while (numberOfMoves < 1500 && numberDelivered < date.size() && appletonReached == false) {
                 System.out.println(numberOfMoves);
+                System.out.println(allPickups.size());
                 if (numberOfMoves == 0) {
                     startLocation = appleton;
-                } else if (allDelivered == true) {
+                } else if (allDelivered == true || numberOfMoves > 1450) {
                     returnToAppleton = true;
                 } else {
                     startLocation = nextMove;
+                    /**int appletonPath = appletonPath(startLocation);
+                    if ((appletonPath+numberOfMoves)>1495){
+                        returnToAppleton = true;
+                    }*/
                 }
                 if (returnToAppleton == true) {
 
@@ -173,58 +179,55 @@ public class Algorithm {
                         appletonReached = true;
                     }else{
 
-                        //figure out next move
-                        moves = moves(startLocation, appleton, buildingCoordinates);
 
                         //finds the closest angle to the destination
-                        double finalDistance = 999;
-                        int finalMove = 0;
-                        int angleMove;
-                        double distanceMove;
-                        for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
-                            angleMove = entry.getKey();
-                            distanceMove = entry.getValue();
-                            if (distanceMove < finalDistance) {
-                                finalDistance = distanceMove;
-                                finalMove = angleMove;
-                            }
-                        }
-                        LongLat checkMove = startLocation.nextPosition(finalMove);
-                        double checkMoveLong = checkMove.longitude;
-                        double checkMoveLat = checkMove.latitude;
-                        if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
-                                doNotEnter.add(dronePath.get(dronePath.size()-1));
-
-                                landmark = closestLandmark(startLocation, landmarkCoordinates);
-                                landmarkDistance = startLocation.distanceTo(landmark);
-                                pickingUp = false;
-                                pausedPickup = true;
-                                headingLandmark = true;
-
-                            }
-                        }
+                        double firstDistance = 999;
+                        int firstMove = 0;
+                        int firstAngleMove;
+                        double firstDistanceMove;
+                        double secondDistance = 999;
+                        int secondMove = 0;
+                        int secondAngleMove;
+                        double secondDistanceMove;
+                        boolean doNotUse = false;
+                        HashMap<Integer, Double> innerMoves = new HashMap<>();
                         //figure out next move
                         moves = moves(startLocation, appleton, buildingCoordinates);
-
-                        //finds the closest angle to the destination
-                        finalDistance = 999;
-                        finalMove = 0;
                         for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
-                            angleMove = entry.getKey();
-                            distanceMove = entry.getValue();
-                            if (distanceMove < finalDistance) {
-                                finalDistance = distanceMove;
-                                finalMove = angleMove;
+                            firstAngleMove = entry.getKey();
+                            firstDistanceMove = entry.getValue();
+                            if (firstDistanceMove < firstDistance) {
+
+                                LongLat checkFirstMove = startLocation.nextPosition(firstMove);
+                                innerMoves = moves(checkFirstMove, appleton, buildingCoordinates);
+                                for (Map.Entry<Integer, Double> innerEntry : innerMoves.entrySet()) {
+                                    secondAngleMove = innerEntry.getKey();
+                                    secondDistanceMove = innerEntry.getValue();
+                                    if (secondDistanceMove < secondDistance) {
+                                        secondDistance = secondDistanceMove;
+                                        secondMove = secondAngleMove;
+                                        LongLat checkSecondMove = checkFirstMove.nextPosition(secondMove);
+                                        if ((checkSecondMove.longitude==checkFirstMove.longitude && checkSecondMove.latitude==checkSecondMove.latitude) || (checkSecondMove.longitude==startLocation.longitude && checkSecondMove.latitude==startLocation.latitude)){
+                                            doNotUse = true;
+                                        }
+                                    }
+                                }
+                                if (doNotUse == true){
+                                    //do nothing
+                                    doNotUse = false;
+                                }else{
+                                    firstDistance = firstDistanceMove;
+                                    firstMove = firstAngleMove;
+                                }
                             }
                         }
 
-                        nextMove = startLocation.nextPosition(finalMove);
+                        nextMove = startLocation.nextPosition(firstMove);
                         dronePath.add(nextMove);
                         ArrayList<Double> dronePathArray = new ArrayList<>();
                         dronePathArray.add(startLocation.longitude);
                         dronePathArray.add(startLocation.latitude);
-                        dronePathArray.add((double) finalMove);
+                        dronePathArray.add((double) firstMove);
                         dronePathArray.add(nextMove.longitude);
                         dronePathArray.add(nextMove.latitude);
                         justPath.add(dronePathArray);
@@ -233,91 +236,99 @@ public class Algorithm {
                         numberOfMoves = numberOfMoves +1;
                     }
                 }
-                else if (currentlyDelivering == false && pickingUp == false && headingLandmark == false){
+                else if (currentlyDelivering == false && pickingUp == false && headingLandmark == false) {
 
-                    if (allPickups.size() == 0){
-                        numberOfMoves = 1501;
-                    }else {
-                        HashMap<String, Double> jointCloseness = new HashMap<>();
-                        for (Map.Entry<String, ArrayList<LongLat>> entry : allPickups.entrySet()) {
-                            ArrayList<LongLat> pickupsArray = entry.getValue();
-                            ArrayList<Double> closeness = new ArrayList<>();
-                            for (int c = 0; c < pickupsArray.size(); c++) {
-                                double close = startLocation.distanceTo(pickupsArray.get(c));
-                                closeness.add(close);
-                            }
-                            double sumCloseness = 0;
-                            for (int d = 0; d < closeness.size(); d++) {
-                                double closeTemp = closeness.get(d);
-                                sumCloseness = sumCloseness + closeTemp;
-                            }
-                            jointCloseness.put(entry.getKey(), sumCloseness);
-                        }
-                        String closenessLocation = null;
-                        double closenessNumber = 999;
-                        for (Map.Entry<String, Double> entry : jointCloseness.entrySet()) {
-                            String location = entry.getKey();
-                            double value = entry.getValue();
-                            if (value < closenessNumber) {
-                                closenessNumber = value;
-                                closenessLocation = location;
-                            }
+
+                    HashMap<String, Double> jointCloseness = new HashMap<>();
+                    for (Map.Entry<String, ArrayList<LongLat>> entry : allPickups.entrySet()) {
+                        ArrayList<LongLat> pickupsArray = entry.getValue();
+                        ArrayList<Double> closeness = new ArrayList<>();
+                        for (int c = 0; c < pickupsArray.size(); c++) {
+                            double close = startLocation.distanceTo(pickupsArray.get(c));
+                            closeness.add(close);
                         }
 
-                        pickupID = closenessLocation;
+                        String deliverTo = (dateHash.get(entry.getKey())).get(2);
+                        LongLat deliverToCoordinates = words.getInfo(deliverTo);
+                        double distanceToCoordinates = startLocation.distanceTo(deliverToCoordinates);
 
-                        //get pickups for certain pickup id
-                        //should be no more than 2 pickups
-                        ArrayList<LongLat> items = allPickups.get(pickupID);
-                        Set<LongLat> set = new HashSet<>(items);
-                        items.clear();
-                        items.addAll(set);
-                        allPickups.remove(pickupID);
+                        String[] items = details.get(entry.getKey()).toArray(new String[0]);
+                        int cost = menus.getDeliveryCost(items);
 
-                        if (items.size() == 2) {
-                            if (startLocation.distanceTo(items.get(0)) < startLocation.distanceTo(items.get(1))) {
-                                pickupOne = items.get(0);
-                                pickupTwo = items.get(1);
-                            } else {
-                                pickupOne = items.get(1);
-                                pickupTwo = items.get(0);
-                            }
-                        } else {
-                            pickupOne = items.get(0);
-                            pickupTwo = null;
+                        double pickupCloseness = 0;
+                        for (int d = 0; d < closeness.size(); d++) {
+                            double closeTemp = closeness.get(d);
+                            pickupCloseness = pickupCloseness + closeTemp;
                         }
 
-                        //set delivery location
-                        deliveryLocation = dateCoordinates.get(pickupID);
-                        dateCoordinates.remove(pickupID);
+                        double finalSum = (pickupCloseness + distanceToCoordinates) / cost;
 
-                        //figure out next move
-                        moves = moves(startLocation, pickupOne, buildingCoordinates);
-                        double finalDistance = 999;
-                        int finalMove = 0;
-                        for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
-                            int angleMove = entry.getKey();
-                            double distanceMove = entry.getValue();
-                            if (distanceMove < finalDistance) {
-                                finalDistance = distanceMove;
-                                finalMove = angleMove;
-                            }
-                        }
-                        nextMove = startLocation.nextPosition(finalMove);
-
-                        dronePath.add(nextMove);
-                        ArrayList<Double> dronePathArray = new ArrayList<>();
-                        dronePathArray.add(startLocation.longitude);
-                        dronePathArray.add(startLocation.latitude);
-                        dronePathArray.add((double) finalMove);
-                        dronePathArray.add(nextMove.longitude);
-                        dronePathArray.add(nextMove.latitude);
-                        justPath.add(dronePathArray);
-                        justOrder.add(pickupID);
-                        pickingUp = true;
-                        numberOfMoves = numberOfMoves + 1;
-
+                        jointCloseness.put(entry.getKey(), finalSum);
                     }
+                    String closenessLocation = null;
+                    double closenessNumber = 999;
+                    for (Map.Entry<String, Double> entry : jointCloseness.entrySet()) {
+                        String location = entry.getKey();
+                        double value = entry.getValue();
+                        if (value < closenessNumber) {
+                            closenessNumber = value;
+                            closenessLocation = location;
+                        }
+                    }
+
+                    pickupID = closenessLocation;
+
+                    //get pickups for certain pickup id
+                    //should be no more than 2 pickups
+                    ArrayList<LongLat> items = allPickups.get(pickupID);
+                    Set<LongLat> set = new HashSet<>(items);
+                    items.clear();
+                    items.addAll(set);
+                    allPickups.remove(pickupID);
+
+                    if (items.size() == 2) {
+                        if (startLocation.distanceTo(items.get(0)) < startLocation.distanceTo(items.get(1))) {
+                            pickupOne = items.get(0);
+                            pickupTwo = items.get(1);
+                        } else {
+                            pickupOne = items.get(1);
+                            pickupTwo = items.get(0);
+                        }
+                    } else {
+                        pickupOne = items.get(0);
+                        pickupTwo = null;
+                    }
+
+                    //set delivery location
+                    deliveryLocation = dateCoordinates.get(pickupID);
+                    dateCoordinates.remove(pickupID);
+
+                    //figure out next move
+                    moves = moves(startLocation, pickupOne, buildingCoordinates);
+                    double finalDistance = 999;
+                    int finalMove = 0;
+                    for (Map.Entry<Integer, Double> entry : moves.entrySet()) {
+                        int angleMove = entry.getKey();
+                        double distanceMove = entry.getValue();
+                        if (distanceMove < finalDistance) {
+                            finalDistance = distanceMove;
+                            finalMove = angleMove;
+                        }
+                    }
+                    nextMove = startLocation.nextPosition(finalMove);
+
+                    dronePath.add(nextMove);
+                    ArrayList<Double> dronePathArray = new ArrayList<>();
+                    dronePathArray.add(startLocation.longitude);
+                    dronePathArray.add(startLocation.latitude);
+                    dronePathArray.add((double) finalMove);
+                    dronePathArray.add(nextMove.longitude);
+                    dronePathArray.add(nextMove.latitude);
+                    justPath.add(dronePathArray);
+                    justOrder.add(pickupID);
+                    pickingUp = true;
+                    numberOfMoves = numberOfMoves + 1;
+
 
                 }else if (currentlyDelivering == false && pickingUp == true){
 
@@ -552,24 +563,21 @@ public class Algorithm {
                         double checkMoveLong = checkMove.longitude;
                         double checkMoveLat = checkMove.latitude;
                         if (dronePath.size()>3) {
-                            if ((dronePath.get(dronePath.size() - 5).longitude == checkMoveLong && dronePath.get(dronePath.size() - 5).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 4).longitude == checkMoveLong && dronePath.get(dronePath.size() - 4).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
+                            if ((dronePath.get(dronePath.size() - 3).longitude == checkMoveLong && dronePath.get(dronePath.size() - 3).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 2).longitude == checkMoveLong && dronePath.get(dronePath.size() - 2).latitude == checkMoveLat) || (dronePath.get(dronePath.size() - 1).longitude == checkMoveLong && dronePath.get(dronePath.size() - 1).latitude == checkMoveLat)) {
                                 doNotEnter.add(dronePath.get(dronePath.size()-1));
-                                numberOfMoves = numberOfMoves - 5;
+                                numberOfMoves = numberOfMoves - 3;
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
                                 dronePath.remove(dronePath.size()-1);
-                                dronePath.remove(dronePath.size()-1);
-                                dronePath.remove(dronePath.size()-1);
+
                                 justPath.remove(justPath.size()-1);
                                 justPath.remove(justPath.size()-1);
                                 justPath.remove(justPath.size()-1);
-                                justPath.remove(justPath.size()-1);
-                                justPath.remove(justPath.size()-1);
+
                                 justOrder.remove(justOrder.size()-1);
                                 justOrder.remove(justOrder.size()-1);
                                 justOrder.remove(justOrder.size()-1);
-                                justOrder.remove(justOrder.size()-1);
-                                justOrder.remove(justOrder.size()-1);
+
                                 startLocation = (dronePath.get(dronePath.size()-1));
                                 landmark = closestLandmark(startLocation, landmarkCoordinates);
                                 landmarkDistance = startLocation.distanceTo(landmark);
@@ -650,6 +658,141 @@ public class Algorithm {
 
         return jsonString;
     }
+
+    /*
+    public int appletonPath(LongLat startLocation) {
+
+        boolean fakeAppletonReached = false;
+        boolean headingLandmarkAppleton = false;
+        int pathSize = 0;
+        int noAppletonMoves = 0;
+        int landmarkMovesAppleton = 0;
+        ArrayList<LongLat> appletonPath = new ArrayList<>();
+        HashMap<Integer, Double> appletonMoves = new HashMap<>();
+        LongLat nextAppletonMove = null;
+        LongLat landmarkAppleton = null;
+
+        Buildings buildings = new Buildings(firstPort);
+        ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings();
+        ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks();
+
+        while (fakeAppletonReached == false) {
+            if (noAppletonMoves>0) {
+                startLocation = nextAppletonMove;
+            }
+            System.out.println("ooga");
+            if (headingLandmarkAppleton == true) {
+                System.out.println("booga");
+                //startLocation = nextAppletonMove;
+                if (landmarkMovesAppleton < 15) {
+                    appletonMoves = moves(startLocation, landmarkAppleton, buildingCoordinates);
+                    double finalDistance = 999;
+                    int finalMove = 0;
+                    for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
+                        int angleMove = entry.getKey();
+                        double distanceMove = entry.getValue();
+                        if (distanceMove < finalDistance) {
+                            finalDistance = distanceMove;
+                            finalMove = angleMove;
+                        }
+                    }
+                    LongLat checkMove = startLocation.nextPosition(finalMove);
+                    double checkMoveLong = checkMove.longitude;
+                    double checkMoveLat = checkMove.latitude;
+                    if (appletonPath.size() > 3) {
+                        if ((appletonPath.get(appletonPath.size() - 3).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 3).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 2).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 2).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 1).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 1).latitude == checkMoveLat)) {
+                            doNotEnter.add(appletonPath.get(appletonPath.size() - 1));
+                            noAppletonMoves = noAppletonMoves - 3;
+                            appletonPath.remove(appletonPath.size() - 1);
+                            appletonPath.remove(appletonPath.size() - 1);
+                            appletonPath.remove(appletonPath.size() - 1);
+                            startLocation = (appletonPath.get(appletonPath.size() - 1));
+                            landmarkAppleton = closestLandmark(startLocation, landmarkCoordinates);
+
+                        }
+                    }
+
+
+                    //figure out next move
+                    appletonMoves = moves(startLocation, landmarkAppleton, buildingCoordinates);
+                    finalDistance = 999;
+                    finalMove = 0;
+                    for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
+                        int angleMove = entry.getKey();
+                        double distanceMove = entry.getValue();
+                        if (distanceMove < finalDistance) {
+                            finalDistance = distanceMove;
+                            finalMove = angleMove;
+                        }
+                    }
+
+                    nextAppletonMove = startLocation.nextPosition(finalMove);
+
+                    appletonPath.add(nextAppletonMove);
+                    noAppletonMoves = noAppletonMoves + 1;
+                    landmarkMovesAppleton = landmarkMovesAppleton + 1;
+                }else{
+                    landmarkMovesAppleton = 0;
+                    headingLandmarkAppleton = false;
+                }
+            }else if (startLocation.closeTo(appleton)) {
+                fakeAppletonReached = true;
+                pathSize = appletonPath.size();
+            } else {
+                System.out.println("tooga");
+                //figure out next move
+                appletonMoves = moves(startLocation, appleton, buildingCoordinates);
+
+                //finds the closest angle to the destination
+                double finalDistance = 999;
+                int finalMove = 0;
+                int angleMove;
+                double distanceMove;
+                for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
+                    angleMove = entry.getKey();
+                    distanceMove = entry.getValue();
+                    if (distanceMove < finalDistance) {
+                        finalDistance = distanceMove;
+                        finalMove = angleMove;
+                    }
+                }
+                LongLat checkMove = startLocation.nextPosition(finalMove);
+                double checkMoveLong = checkMove.longitude;
+                double checkMoveLat = checkMove.latitude;
+                if (appletonPath.size() > 3) {
+                    if ((appletonPath.get(appletonPath.size() - 3).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 3).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 2).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 2).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 1).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 1).latitude == checkMoveLat)) {
+                        doNotEnter.add(appletonPath.get(appletonPath.size() - 1));
+
+                        landmarkAppleton = closestLandmark(startLocation, landmarkCoordinates);
+                        headingLandmarkAppleton = true;
+
+                    }
+                }
+                //figure out next move
+                appletonMoves = moves(startLocation, appleton, buildingCoordinates);
+
+                //finds the closest angle to the destination
+                finalDistance = 999;
+                finalMove = 0;
+                for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
+                    angleMove = entry.getKey();
+                    distanceMove = entry.getValue();
+                    if (distanceMove < finalDistance) {
+                        finalDistance = distanceMove;
+                        finalMove = angleMove;
+                    }
+                }
+
+
+                nextAppletonMove = startLocation.nextPosition(finalMove);
+                appletonPath.add(nextAppletonMove);
+                noAppletonMoves = noAppletonMoves + 1;
+                System.out.println(noAppletonMoves);
+            }
+        }
+        return noAppletonMoves;
+    }
+    */
 
     public LongLat closestLandmark(LongLat startLocation, ArrayList<LongLat> landmarkCoordinates) {
 
