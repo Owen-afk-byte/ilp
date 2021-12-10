@@ -1,7 +1,8 @@
 package uk.ac.ed.inf;
 
-import java.util.ArrayList;
-
+/**
+ * A class simply used to allow the reading in of the information from the words folder
+ */
 public class WordExtension {
     Coordinates coordinates;
     public static class Coordinates {

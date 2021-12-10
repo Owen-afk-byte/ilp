@@ -18,7 +18,7 @@ public class Buildings {
     private String port;
 
     /**
-     * A constructor class used to represent the name and port used for the server
+     * A constructor class used to represent the port used for the server
      * @param port a string representing the server port
      */
     public Buildings(String port){
@@ -27,6 +27,10 @@ public class Buildings {
 
     private static final HttpClient client = HttpClient.newHttpClient();
 
+    /**
+     * Doesn't take in anything at all it uses is the port given in the constructor class
+     * @return an ArrayList<ArrayList<LongLat>> which represents all 5 no-fly zones and will be used later to ensure the drone does not pass into them
+     */
     public ArrayList<ArrayList<LongLat>> getBuildings() {
 
         ArrayList<ArrayList<LongLat>> buildingsArray = new ArrayList<>();
@@ -82,6 +86,10 @@ public class Buildings {
         return buildingsArray;
     }
 
+    /**
+     * Doesn't take in anything at all it uses is the port given in the constructor class
+     * @return an <ArrayList<LongLat>> which represents the 2 landmarks that the drone can use to navigate
+     */
     public ArrayList<LongLat> getLandmarks() {
 
         ArrayList<LongLat> landmarksArray = new ArrayList<>();

@@ -18,7 +18,7 @@ public class Words {
     public String port;
 
     /**
-     * A constructor class used to represent the name and port used for the server
+     * A constructor class used to represent the port used for the server
      * @param port a string representing the server port
      */
     public Words(String port){
@@ -28,9 +28,9 @@ public class Words {
     private static final HttpClient client = HttpClient.newHttpClient();
 
     /**
-     * Takes in list of items and calculates the delivery cost of given items
-     * @param string a list of strings representing the items that we need to find the cost of
-     * @return an integer representing the cost of all of the items + the 50p for delivery
+     * getInfo takes in a What3Words adress and then outputs the corresponding coordinates for that What3Words address as a LongLat
+     * @param string is a string representing a What3Words address
+     * @return a LongLat which contains the coordinates associated with the What3Words address
      */
     public LongLat getInfo(String string) {
         LongLat coordsArray = new LongLat(0, 0);

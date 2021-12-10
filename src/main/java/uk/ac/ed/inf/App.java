@@ -5,12 +5,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-/**
- * Hello world!
- *
- */
 public class App 
 {
+    /**
+     * Main class is simply the class which is called to begin with
+     * @param args reads in the arguments that the user enters
+     * The arguments are the day, month, year and which 2 ports will be used to run the servers
+     * Class returns nothing, it simply writes the GeoJSON to a text file
+     */
     public static void main( String[] args )
     {
         System.out.println("hello world");

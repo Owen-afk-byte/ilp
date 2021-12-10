@@ -16,6 +16,14 @@ public class Algorithm {
     private String secondPort;
 
 
+    /**
+     * A constructor class used to read in the arguments that it was given my the main function in the App class
+     * @param day a string representing the day of the year which we will be finding the drone path for
+     * @param month a string representing the month of the year which we will be finding the drone path for
+     * @param year a string representing the year which we will be finding the drone path for
+     * @param firstPort a string representing one of the server ports
+     * @param secondPort a string representing the other server port
+     */
     public Algorithm(String day, String month, String year, String firstPort, String secondPort) {
         this.day = day;
         this.month = month;
@@ -24,33 +32,33 @@ public class Algorithm {
         this.secondPort = secondPort;
     }
 
-    private static final HttpClient client = HttpClient.newHttpClient();
-
     ArrayList<LongLat> doNotEnter = new ArrayList<>();
     ArrayList<LongLat> dronePath = new ArrayList<>();
     int numberOfMoves = 0;
     int landmarkMoves = 0;
     LongLat appleton = new LongLat(-3.186874, 55.944494);
 
+    /**
+     * The mainAlgorithm is where the majority of the work is done and it calls on all of the other functions in the class
+     * It takes in no new parameters as it uses the parameters given in the constructor class
+     * @return a string which represents the GeoJSON of the drone flight path and is given back to the main class
+     */
     public String mainAlgorithm() {
+
+
+        int numberDelivered = 0;
 
         LongLat nextMove = null;
         LongLat startLocation = null;
-        int numberDelivered = 0;
-        ArrayList<String> picked = new ArrayList<>();
-
         LongLat deliveryLocation = null;
         LongLat pickupOne = null;
         LongLat pickupTwo = null;
         LongLat landmark = null;
 
-        double landmarkDistance = 0;
-
         String pickupID = null;
-        ArrayList<LongLat> deliveryLocations = new ArrayList<>();
         ArrayList<ArrayList<Double>> justPath = new ArrayList<>();
         ArrayList<String> justOrder = new ArrayList<>();
-
+        ArrayList<LongLat> doNotEnter = new ArrayList<>();
 
         boolean returnToAppleton = false;
         boolean appletonReached = false;
@@ -61,12 +69,9 @@ public class Algorithm {
         boolean allDelivered = false;
         boolean headingLandmark = false;
 
-        HashMap<Integer, Double> moves = new HashMap<>();
-        HashMap<Integer, Double> movesAgain = new HashMap<>();
+        HashMap<Integer, Double> moves;
         HashMap<String, ArrayList<String>> deliveriesHashMap = new HashMap<>();
-        HashMap<String, ArrayList<Double>> flightPathHashMap = new HashMap<>();
 
-        ArrayList<LongLat> doNotEnter = new ArrayList<>();
 
         try {
 
@@ -114,7 +119,7 @@ public class Algorithm {
             }
 
             if (appletonReached == true){
-                String jdbcString = "jdbc:derby://localhost:" + secondPort + "/derbyDB";        //<----- change this jdbc string
+                String jdbcString = "jdbc:derby://localhost:" + secondPort + "/derbyDB";
                 Connection conn = DriverManager.getConnection(jdbcString);
                 Statement statement = conn.createStatement();
                 DatabaseMetaData databaseMetaData = conn.getMetaData();
@@ -165,10 +170,6 @@ public class Algorithm {
                     returnToAppleton = true;
                 } else {
                     startLocation = nextMove;
-                    /**int appletonPath = appletonPath(startLocation);
-                    if ((appletonPath+numberOfMoves)>1495){
-                        returnToAppleton = true;
-                    }*/
                 }
                 if (returnToAppleton == true) {
 
@@ -398,7 +399,6 @@ public class Algorithm {
                                 justOrder.remove(justOrder.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
                                 landmark = closestLandmark(startLocation, landmarkCoordinates);
-                                landmarkDistance = startLocation.distanceTo(landmark);
                                 pickingUp = false;
                                 pausedPickup = true;
                                 headingLandmark = true;
@@ -508,7 +508,6 @@ public class Algorithm {
                                 justOrder.remove(justOrder.size()-1);
                                 startLocation = (dronePath.get(dronePath.size()-1));
                                 landmark = closestLandmark(startLocation, landmarkCoordinates);
-                                landmarkDistance = startLocation.distanceTo(landmark);
                                 currentlyDelivering = false;
                                 pausedDelivery = true;
                                 headingLandmark = true;
@@ -580,7 +579,6 @@ public class Algorithm {
 
                                 startLocation = (dronePath.get(dronePath.size()-1));
                                 landmark = closestLandmark(startLocation, landmarkCoordinates);
-                                landmarkDistance = startLocation.distanceTo(landmark);
 
                             }
                         }
@@ -659,141 +657,12 @@ public class Algorithm {
         return jsonString;
     }
 
-    /*
-    public int appletonPath(LongLat startLocation) {
-
-        boolean fakeAppletonReached = false;
-        boolean headingLandmarkAppleton = false;
-        int pathSize = 0;
-        int noAppletonMoves = 0;
-        int landmarkMovesAppleton = 0;
-        ArrayList<LongLat> appletonPath = new ArrayList<>();
-        HashMap<Integer, Double> appletonMoves = new HashMap<>();
-        LongLat nextAppletonMove = null;
-        LongLat landmarkAppleton = null;
-
-        Buildings buildings = new Buildings(firstPort);
-        ArrayList<ArrayList<LongLat>> buildingCoordinates = buildings.getBuildings();
-        ArrayList<LongLat> landmarkCoordinates = buildings.getLandmarks();
-
-        while (fakeAppletonReached == false) {
-            if (noAppletonMoves>0) {
-                startLocation = nextAppletonMove;
-            }
-            System.out.println("ooga");
-            if (headingLandmarkAppleton == true) {
-                System.out.println("booga");
-                //startLocation = nextAppletonMove;
-                if (landmarkMovesAppleton < 15) {
-                    appletonMoves = moves(startLocation, landmarkAppleton, buildingCoordinates);
-                    double finalDistance = 999;
-                    int finalMove = 0;
-                    for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
-                        int angleMove = entry.getKey();
-                        double distanceMove = entry.getValue();
-                        if (distanceMove < finalDistance) {
-                            finalDistance = distanceMove;
-                            finalMove = angleMove;
-                        }
-                    }
-                    LongLat checkMove = startLocation.nextPosition(finalMove);
-                    double checkMoveLong = checkMove.longitude;
-                    double checkMoveLat = checkMove.latitude;
-                    if (appletonPath.size() > 3) {
-                        if ((appletonPath.get(appletonPath.size() - 3).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 3).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 2).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 2).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 1).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 1).latitude == checkMoveLat)) {
-                            doNotEnter.add(appletonPath.get(appletonPath.size() - 1));
-                            noAppletonMoves = noAppletonMoves - 3;
-                            appletonPath.remove(appletonPath.size() - 1);
-                            appletonPath.remove(appletonPath.size() - 1);
-                            appletonPath.remove(appletonPath.size() - 1);
-                            startLocation = (appletonPath.get(appletonPath.size() - 1));
-                            landmarkAppleton = closestLandmark(startLocation, landmarkCoordinates);
-
-                        }
-                    }
-
-
-                    //figure out next move
-                    appletonMoves = moves(startLocation, landmarkAppleton, buildingCoordinates);
-                    finalDistance = 999;
-                    finalMove = 0;
-                    for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
-                        int angleMove = entry.getKey();
-                        double distanceMove = entry.getValue();
-                        if (distanceMove < finalDistance) {
-                            finalDistance = distanceMove;
-                            finalMove = angleMove;
-                        }
-                    }
-
-                    nextAppletonMove = startLocation.nextPosition(finalMove);
-
-                    appletonPath.add(nextAppletonMove);
-                    noAppletonMoves = noAppletonMoves + 1;
-                    landmarkMovesAppleton = landmarkMovesAppleton + 1;
-                }else{
-                    landmarkMovesAppleton = 0;
-                    headingLandmarkAppleton = false;
-                }
-            }else if (startLocation.closeTo(appleton)) {
-                fakeAppletonReached = true;
-                pathSize = appletonPath.size();
-            } else {
-                System.out.println("tooga");
-                //figure out next move
-                appletonMoves = moves(startLocation, appleton, buildingCoordinates);
-
-                //finds the closest angle to the destination
-                double finalDistance = 999;
-                int finalMove = 0;
-                int angleMove;
-                double distanceMove;
-                for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
-                    angleMove = entry.getKey();
-                    distanceMove = entry.getValue();
-                    if (distanceMove < finalDistance) {
-                        finalDistance = distanceMove;
-                        finalMove = angleMove;
-                    }
-                }
-                LongLat checkMove = startLocation.nextPosition(finalMove);
-                double checkMoveLong = checkMove.longitude;
-                double checkMoveLat = checkMove.latitude;
-                if (appletonPath.size() > 3) {
-                    if ((appletonPath.get(appletonPath.size() - 3).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 3).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 2).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 2).latitude == checkMoveLat) || (appletonPath.get(appletonPath.size() - 1).longitude == checkMoveLong && appletonPath.get(appletonPath.size() - 1).latitude == checkMoveLat)) {
-                        doNotEnter.add(appletonPath.get(appletonPath.size() - 1));
-
-                        landmarkAppleton = closestLandmark(startLocation, landmarkCoordinates);
-                        headingLandmarkAppleton = true;
-
-                    }
-                }
-                //figure out next move
-                appletonMoves = moves(startLocation, appleton, buildingCoordinates);
-
-                //finds the closest angle to the destination
-                finalDistance = 999;
-                finalMove = 0;
-                for (Map.Entry<Integer, Double> entry : appletonMoves.entrySet()) {
-                    angleMove = entry.getKey();
-                    distanceMove = entry.getValue();
-                    if (distanceMove < finalDistance) {
-                        finalDistance = distanceMove;
-                        finalMove = angleMove;
-                    }
-                }
-
-
-                nextAppletonMove = startLocation.nextPosition(finalMove);
-                appletonPath.add(nextAppletonMove);
-                noAppletonMoves = noAppletonMoves + 1;
-                System.out.println(noAppletonMoves);
-            }
-        }
-        return noAppletonMoves;
-    }
-    */
-
+    /**
+     * The closestLandmark class is used calculate which landmark is the closest to the drones current coordinates so that it can begin to fly there
+     * @param startLocation is the location in which the drone begins at
+     * @param landmarkCoordinates is an array containing the longitudes and latitudes of the two landmarks used to help with drone flight
+     * @return a LongLat which is the position of the nearest landmark that the drone will then fly towards
+     */
     public LongLat closestLandmark(LongLat startLocation, ArrayList<LongLat> landmarkCoordinates) {
 
         LongLat firstLandmark = landmarkCoordinates.get(0);
@@ -818,6 +687,14 @@ public class Algorithm {
     return currentLandmark;
     }
 
+    /**
+     * The safeMove class is used calculate if a given angle causes the drone to move to a safe location
+     * A safe location is determined if the drone is in the confined area, does not cross a no fly zone, and does not enter coordinates deemed doNotEnter
+     * @param startLocation is the location in which the drone begins at
+     * @param angle is the angle which will determine the drones next move
+     * @param buildingCoordinates contains the coordinates of the 5 buildings/no-fly zones that the drone is to avoid
+     * @return a boolean which determines if the drone is deemed to be making a safe move
+     */
     public boolean safeMove(int angle, LongLat startLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
 
         LongLat nextMove = startLocation.nextPosition(angle);
@@ -867,18 +744,22 @@ public class Algorithm {
                 noEntry = false;
             }
         }
-
-
-
         if (canMove == true && nextMove.isConfined() == true && noEntry == false) {
             moveOkay = true;
         } else {
             moveOkay = false;
         }
-
         return moveOkay;
     }
 
+    /**
+     * The moves class is used calculate all of the possible 36 moves that a drone can make and return them if they are safe to make
+     * A safe location is determined if the drone is in the confined area, does not cross a no fly zone, and does not enter coordinates deemed doNotEnter
+     * @param startLocation is the location in which the drone begins at
+     * @param nextLocation is the location of the drones next aimed location is
+     * @param buildingCoordinates contains the coordinates of the 5 buildings/no-fly zones that the drone is to avoid
+     * @return a HashMap<Integer, Double> which contains all of the angles of the drones next moves as well as the distances from the next move to the aimed location
+     */
     public HashMap<Integer, Double> moves(LongLat startLocation, LongLat nextLocation, ArrayList<ArrayList<LongLat>> buildingCoordinates) {
 
         HashMap<Integer, Double> tempAngles = new HashMap<>();

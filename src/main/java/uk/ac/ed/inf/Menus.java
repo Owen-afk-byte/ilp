@@ -19,7 +19,7 @@ public class Menus {
     public String port;
 
     /**
-     * A constructor class used to represent the name and port used for the server
+     * A constructor class used to represent port used for the server
      * @param port a string representing the server port
      */
     public Menus(String port){
@@ -78,6 +78,11 @@ public class Menus {
         return total;
     }
 
+    /**
+     * Takes in a string of What3Words and returns its associated coordinates
+     * @param string a What3Word representing a delivery location
+     * @return a string which will then be used to find information using the coordinate
+     */
     public String getW3W(String string) {
 
         String W3W = null;
@@ -100,7 +105,7 @@ public class Menus {
             for (int m = 0; m < responseList.size(); m++) {
                 ArrayList<MenuExtension.Items> menu = responseList.get(m).menu;
                 String location = responseList.get(m).location;
-                // Loops through each item on the menu and checks if it matches with the given item from the list
+                // Loops through each item on the menu and checks if it matches with the given location from the list
                 for (int i = 0; i < menu.size(); i++) {
                     if (menu.get(i).item.equals(string)) {
                         W3W = location;

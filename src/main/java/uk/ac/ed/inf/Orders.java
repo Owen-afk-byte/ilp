@@ -22,7 +22,7 @@ public class Orders {
 
 
     /**
-     * A constructor class used to represent the name and port used for the server
+     * A constructor class used to represent the port used for the server
      * @param port a string representing the server port
      */
     public Orders(String port){
@@ -30,7 +30,10 @@ public class Orders {
     }
 
     /**
-     * Takes in list of items and calculates the delivery cost of given items
+     * getDates uses the day, month and year to find and display the order table with those criteria
+     * @param year a string representing the year which we are searching for
+     * @param month a string representing the month which we are searching for
+     * @param day a string representing the day which we are searching for
      * @return an integer representing the cost of all of the items + the 50p for delivery
      */
     public ArrayList<ArrayList<String>> getDates(String year, String month, String day) {
@@ -51,8 +54,6 @@ public class Orders {
             PreparedStatement psDateQuery = conn.prepareStatement(dateQuery);
             psDateQuery.setString(1, string);
 
-            //Search for the deliveries and add them to a list
-            //ArrayList<String> dateList = new ArrayList<>();                    <--original place
             ResultSet rs = psDateQuery.executeQuery();
             while (rs.next()){
                 ArrayList<String> eachDate = new ArrayList<>();
@@ -75,6 +76,11 @@ public class Orders {
         return dateList;
     }
 
+    /**
+     * getDetails takes in the information we found from getDates to return all of the items that each orderID should pickup
+     * @param foundDateList an ArrayList<ArrayList<String>> containing all of the information given from the previous getDates class
+     * @return a HashMap<String, ArrayList<String>> representing the orderDetails table matching the orderIDs that we entered
+     */
     public HashMap<String, ArrayList<String>> getDetails(ArrayList<ArrayList<String>> foundDateList) {
 
         ArrayList<ArrayList<String>> detailsList = new ArrayList<>();
